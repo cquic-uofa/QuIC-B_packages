@@ -1,6 +1,6 @@
 # QuIC-B_packages
 
-A collection of useful MATLAN utilities for quantum simulation
+A collection of useful MATLAB utilities for quantum simulation
 
 gellmann.m contains a collection of code to handle generalized GellMann matrices
 
