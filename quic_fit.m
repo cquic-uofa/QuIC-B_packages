@@ -1,12 +1,10 @@
 classdef quic_fit
 % standard tools for fitting Stern-Gerlach signals in QuIC B
 
-
-% scs_from_unit_vector(n,J[,con])
-% scs_from_polar_angles(theta,phi,J[,con])
-
-% conventions are standard {J,J-1,...-J} or bgrape {-J,-J+1,...J}
-% ensembles are {'uni','ortho','symp'}
+% fit_SG(signal, background)  
+%   expects structs containing SG_tof_3 adn SG_tof_4
+% recursive_fit(root)
+%   fits all files contained within root directory and within subdirectories recursively
 
 methods (Static)
     
