@@ -56,6 +56,49 @@ methods (Static)
 
     end
 
+    function recursive_fit(root)
+
+        dir_struct = dir(root);
+        
+        files = dir_struct(~[dir_struct.isdir]);
+        folders = dir_struct([dir_struct.isdir]);
+        
+        for ii = 1:numel(folders)
+            % 
+            if strcmp(folders(ii).name,".")||strcmp(folders(ii).name,"..")
+                continue % these are always present
+            end
+            nroot = fullfile(folders(ii).folder,folders(ii).name);
+            recursive_fit(nroot);
+        
+        end
+        
+        key = strcmp("background.mat",{files.name});
+        background_file = files(key);
+        data_files = files(~key);
+        if ~isempty(background_file)
+            % do the stuff
+            background = load(fullfile(background_file(1).folder,background_file(1).name));
+            ndir = strcat(background_file.folder,"_fits");
+            mkdir(ndir);
+            for ii = 1:numel(data_files)
+                fin = fullfile(data_files(ii).folder,data_files(ii).name);
+                % make parallel folder %(name)_fits with same file names suffixed with fit
+                data = load(fin);
+                if (~isfield(data,"SG_tof_3"))||(~isfield(data,"SG_tof_4"))
+                    continue
+                end
+                [~,fname,fext] = fileparts(data_files(ii).name);
+        
+                fout = fullfile(ndir,strcat(fname,"_fit",fext));
+        
+                solution = quic_fit.fit_SG(data,background);
+                save(fout,"-struct","solution")
+            end
+        end
+        
+    end
+
     % function fit_uni_run_calAllPeaks_automated()
 
     % end
@@ -143,10 +186,6 @@ methods (Access=private,Static)
             
             template_signal = template_data.template_signal;
             template_center = template_data.template_center;
-
-            size(centers_guess)
-            size(amps_guess)
-            size(widths_guess)
 
             params_guess = vertcat(reshape(amps_guess,1,[]),reshape(widths_guess,1,[]),reshape(centers_guess,1,[]));
             
