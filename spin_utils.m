@@ -65,9 +65,10 @@ methods (Static)
     end
 
     function U = make_rand_haar_uni(J,ens,com)
+        % This algorithm follows the algorithm outlined in 
+        %   Diaconis P., Shahshahani M. "The Subgroup Algorithm for Generating Uniform Random Variables" (2009)
         %
         % Draw random Unitary from circular orthogonal, unitary, or symplectic ensembles
-        %
         %
 
         dim = 2*J+1;
