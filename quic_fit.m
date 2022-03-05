@@ -91,10 +91,46 @@ methods (Static)
                 fout = fullfile(ndir,strcat(fname,"_fit",fext));
         
                 solution = quic_fit.fit_SG(data,background);
-                save(fout,"-struct","solution")
+                
+                % fprintf("testing print\n")
+                % solution
+                % save(fout,"-struct","solution")
+                % quic_fit.save_struct(fout,solution)
             end
         end
         
+    end
+
+    function res = fit_benchmark(root,options)
+        arguments
+            root (1,1) string % root directory
+            options.format (1,1) string = "concat_unibench_20130715_R_%d_%d_tof_out_fit.mat";
+            options.format_args (1,2) cell = {1:10,1:6};
+            options.iso_index (1,1) int32 = 10;
+        end
+        N_steps = numel(options.format_args{2});
+        fidelities = zeros(1,N_steps);
+        for ii = options.format_args{1}
+            for jj  = options.format_args{2}
+                fname = fullfile(root,sprintf(options.format,ii,jj));
+                solution = load(fname);
+                if ~isfield(solution,"solution")
+                    fidelities(jj) = fidelities(jj) + solution.populations(options.iso_index);
+                else
+                    fidelities(jj) = fidelities(jj) + solution.solution.populations(options.iso_index);
+                end
+            end
+        end
+        fidelities = fidelities/N_steps;
+
+        % fit function from Brian Anderson's thesis
+        fit_fn = @(x,xdata) 1/16 + (15/16) * (1-16*x(1)/15) * (1 - 16*x(2)/15).^xdata;
+        lb = [0,0];
+        ub = [1,1];
+        x = lsqcurvefit(fit_fn,[0,0],0:(N_steps-1),fidelities,lb,ub);
+        res.fit_errors = x;
+        res.fidelities = fidelities;
+
     end
 
     % function fit_uni_run_calAllPeaks_automated()
@@ -103,6 +139,18 @@ methods (Static)
 
 end
 methods (Access=private,Static)
+
+    % function save_struct(fname,val)
+    %     % need this because MATLAB is stupid and inconsistent
+    %     names = fieldnames(val);
+    %     for name = names.'
+    %         % pull all struct fields out
+    %         statement = sprintf("%s = val.%s;",name{1},name{1});
+    %         eval(statement)
+    %     end
+    %     save(fname,names{:},"names");
+    
+    % end
 
     function signal_ds = desample_fn(signal,factor)
         % reduce number of points in vector for faster fitting
@@ -117,6 +165,22 @@ methods (Access=private,Static)
         x = ((1:numel(template_signal))  - template_center) * width_factor + center;
 
         reshaped_template = amp_factor*interp1(x,template_signal,1:numel(template_signal),'spline',0);
+
+
+        % templateLength = length(template_signal);
+        % xVector = 1-center:1:-center+templateLength;
+
+        % %pad the template signal with zeros and scale amplitude
+        % paddedLength = templateLength + 2*templateLength;
+        % paddedTemplateSignal = ...
+        %     [zeros(templateLength,1);amp_factor*template_signal;zeros(templateLength,1)];
+
+        % xMin = 1 - template_center - templateLength;
+        % xMax = xMin + templateLength + 2*templateLength - 1;
+
+        % %reshaped x vector centered at template center
+        % xVectorReshaped = linspace(xMin*width_factor,xMax*width_factor,paddedLength); 
+        % reshaped_template = interp1(xVectorReshaped,paddedTemplateSignal,xVector,'spline');
 
     end
 
@@ -193,34 +257,33 @@ methods (Access=private,Static)
             %This code constrains each element of fit_params to be in some interval
             lb = zeros(3,length(params_guess)); %lower bound vector for optimization vector fit_params 
             ub = zeros(3,length(params_guess)); %upper bound vector for optimization vector fit_params
+            %bounds on the amplitudes of the templates
+            lb(1,:) = params_guess(1,:)*(0.1);
+            ub(1,:) = params_guess(1,:)*10;
+            %bounds on the widths of the templates
+            lb(2,:) = params_guess(2,:) - 0.2;
+            ub(2,:) = params_guess(2,:) + 0.2;
             %bounds on the centers of the templates
             % bd = 20; % is this supposed to be desample_factor
             bd = template_data.desample_factor;
             if manifold == 4
-                lb(1,1:3) = params_guess(1,1:3) - 2500/bd; % 125
-                ub(1,1:3) = params_guess(1,1:3) + 2500/bd;
-                lb(1,4:6) = params_guess(1,4:6) - 3500/bd; % 175
-                ub(1,4:6) = params_guess(1,4:6) + 3500/bd;
-                lb(1,7:9) = params_guess(1,7:9) - 4500/bd; % 225
-                ub(1,7:9) = params_guess(1,7:9) + 4500/bd;
+                lb(3,1:3) = params_guess(3,1:3) - 2500/bd; % 125
+                ub(3,1:3) = params_guess(3,1:3) + 2500/bd;
+                lb(3,4:6) = params_guess(3,4:6) - 3500/bd; % 175
+                ub(3,4:6) = params_guess(3,4:6) + 3500/bd;
+                lb(3,7:9) = params_guess(3,7:9) - 4500/bd; % 225
+                ub(3,7:9) = params_guess(3,7:9) + 4500/bd;
             elseif manifold == 3
-                lb(1,1:2) = params_guess(1,1:2) - 2500/bd; % 125
-                ub(1,1:2) = params_guess(1,1:2) + 2500/bd;
-                lb(1,3:5) = params_guess(1,3:5) - 3500/bd; % 175
-                ub(1,3:5) = params_guess(1,3:5) + 3500/bd;
-                lb(1,6:7) = params_guess(1,6:7) - 4500/bd; % 225
-                ub(1,6:7) = params_guess(1,6:7) + 4500/bd;
+                lb(3,1:2) = params_guess(3,1:2) - 2500/bd; % 125
+                ub(3,1:2) = params_guess(3,1:2) + 2500/bd;
+                lb(3,3:5) = params_guess(3,3:5) - 3500/bd; % 175
+                ub(3,3:5) = params_guess(3,3:5) + 3500/bd;
+                lb(3,6:7) = params_guess(3,6:7) - 4500/bd; % 225
+                ub(3,6:7) = params_guess(3,6:7) + 4500/bd;
             else
                 error("this should be impossible to reach")
             end
-            %bounds on the amplitudes of the templates
-            lb(2,:) = params_guess(2,:)*(0.1);
-            ub(2,:) = params_guess(2,:)*10;
-            %bounds on the widths of the templates
-            lb(3,:) = params_guess(3,:) - 0.2;
-            ub(3,:) = params_guess(3,:) + 0.2;
-            
-            
+                        
             params_guess = reshape(params_guess,1,[]);
             lb = reshape(lb,1,[]);
             ub = reshape(ub,1,[]);
@@ -229,9 +292,9 @@ methods (Access=private,Static)
                 fmincon(fit_error,params_guess,[],[],[],[],lb,ub,[],options);
             best_params = reshape(best_params,3,[]);
 
-            solution.best_centers = best_params(1,:);
-            solution.best_amps = best_params(2,:);
-            solution.best_widths = best_params(3,:);
+            solution.best_amps = best_params(1,:);
+            solution.best_widths = best_params(2,:);
+            solution.best_centers = best_params(3,:);
             
             len = numel(signal);
             fit = zeros(1,len);
