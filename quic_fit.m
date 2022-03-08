@@ -67,7 +67,7 @@ methods (Static)
                 continue % these are always present
             end
             nroot = fullfile(folders(ii).folder,folders(ii).name);
-            recursive_fit(nroot);
+            quic_fit.recursive_fit(nroot);
         
         end
         
@@ -92,10 +92,7 @@ methods (Static)
         
                 solution = quic_fit.fit_SG(data,background);
                 
-                % fprintf("testing print\n")
-                % solution
-                % save(fout,"-struct","solution")
-                % quic_fit.save_struct(fout,solution)
+                save(fout,"-struct","solution")
             end
         end
         
@@ -139,18 +136,6 @@ methods (Static)
 
 end
 methods (Access=private,Static)
-
-    % function save_struct(fname,val)
-    %     % need this because MATLAB is stupid and inconsistent
-    %     names = fieldnames(val);
-    %     for name = names.'
-    %         % pull all struct fields out
-    %         statement = sprintf("%s = val.%s;",name{1},name{1});
-    %         eval(statement)
-    %     end
-    %     save(fname,names{:},"names");
-    
-    % end
 
     function signal_ds = desample_fn(signal,factor)
         % reduce number of points in vector for faster fitting
