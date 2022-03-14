@@ -1,95 +1,127 @@
 classdef spin_utils
 % standard tools for spin systems
-% scs_from_unit_vector(n,J[,con])
-% scs_from_polar_angles(theta,phi,J[,con])
-% make_rand_scs(J[,con])
-% make_rand_haar_state(J)
-% make_rand_haar_uni(J[,ens])
-% make_ang_mom(J[,con])
-% make_ang_mom_diag(J[,con])
-% make_uni_qkt(s,t,J[,con])
-% set_default_convention(con)
+% scs_from_unit_vector(n,J=7.5,convention="Standard")
+% scs_from_polar_angles(theta,phi,J=7.5,convention="Standard")
+% rand_scs(J)
+% rand_haar_state(J)
+% rand_haar_uni(J,ensemble="Unitary",domain="Complex")
+% ang_mom(J,convention="Standard")
 
-% conventions are standard {J,J-1,...-J} or bgrape {-J,-J+1,...J}
-% ensembles are {'uni','ortho','symp'}
+% conventions are Standard {J,J-1,...-J} or Reversed {-J,-J+1,...J}
+% ensembles are {'Unitary','Orthogonal','Symplectic'}
 
 methods (Static)
 
-    function scs = scs_from_unit_vector(n,J,con)
-        if nargin==2
-            con = spin_utils.get_default_convention();
+    function scs = scs_from_unit_vector(n,options)
+        arguments
+            n (3,1) double {mustBeUnitVector};
+            options.J (1,1) double {mustBeHalfInteger,mustBeNonnegative} = 7.5;
+            options.convention (1,1) string = "Standard";
         end
-        if strcmp(con,'standard')
-            scs = spin_utils.gen_scs_standard(n,J);
-        elseif strcmp(con,'bgrape')
-            scs = spin_utils.gen_scs_bgrape(n,J);
+
+        % generates spin coherent state from unit vector n in subspace with angular momentum J
+        
+        dim = 2*options.J+1;
+        
+        nn = dim-1; % % dimension - 1 (not to be confused with n)
+        
+        phi = atan2(n(2),n(1));  % azimuthal angle
+        
+        if strcmp(options.convention,"Standard")
+            s = 1;
+            ind = nn+1;
+        elseif strcmp(options.convention,"Reversed")
+            s = -1;
+            ind = 1;
         else
-            error('Spin convention not recognized')
+            error("Spin convention not recognized")
+        end    
+        
+        p = (s*n(3)+1)/2;      % stands in for altitude angle
+        
+        % working in log space so funciton works for large spin
+        base = nn*log(p)/2;
+        step = (log(1-p)-log(p))/2;
+        
+        r = (0:nn)';
+        phase = exp(1i*phi*r);
+        
+        % base + step*r
+        % each step multiply by sqrt((1-p)/p)  % multiply by phase later
+        scs = zeros(dim,1);
+        if n(3)==1
+            scs(ind) = 1;
+            return
         end
+        % if not special case, proceed to calculate binomial
+        scs(1) = base;
+        
+        for ii = 2:(nn+1)
+            scs(ii) = scs(ii-1) + step + log( (nn-ii+2)/(ii-1) )/2;
+        end
+        scs = exp(scs).*phase;
+        scs = scs / norm(scs);
+        
     end
 
-    function scs = scs_from_polar_angles(theta,phi,J,con)
-        if nargin==3
-            con = spin_utils.get_default_convention();
+    function scs = scs_from_polar_angles(theta,phi,options)
+        arguments
+            theta (1,1) double;
+            phi (1,1) double;
+            options.J (1,1) double {mustBeHalfInteger,mustBeNonnegative} = 7.5;
+            options.convention (1,1) string = "Standard";
         end
+        
         n = [sin(theta)*cos(phi),sin(theta)*sin(phi),cos(theta)];
-        if strcmp(con,'standard')
-            scs = spin_utils.gen_scs_standard(n,J);
-        elseif strcmp(con,'bgrape')
-            scs = spin_utils.gen_scs_bgrape(n,J);
-        else
-            error('Spin convention not recognized')
-        end
+        scs = spin_utils.scs_from_unit_vector(n,J=options.J,convention=options.convention); % TODO check to make sure this works
+        
     end
 
-    function scs = make_rand_scs(J,con)
-        if nargin==1
-            con = spin_utils.get_default_convention();
+    function scs = rand_scs(J)
+        arguments
+            J (1,1) double {mustBeHalfInteger,mustBeNonnegative};
         end
-        n = randn(1,3);
+
+        n = randn(3,1);
         n = n/norm(n);
-        if strcmp(con,'standard')
-            scs = spin_utils.gen_scs_standard(n,J);
-        elseif strcmp(con,'bgrape')
-            scs = spin_utils.gen_scs_bgrape(n,J);
-        else
-            error('Spin convention not recognized')
-        end
+        options.J = J;
+        options.convention = "Standard";
+        scs = spin_utils.scs_from_unit_vector(n,J=options.J,convention=options.convention); % TODO check to make sure this works
+        
     end
 
-    function haar = make_rand_haar_state(J)
+    function haar = rand_haar_state(J)
+        arguments
+            J (1,1) double {mustBeHalfInteger};
+        end
         dim = 2*J+1;
-        spin_utils.error_check_spin(J);
         haar = randn(dim,1) + 1j*randn(dim,1);
         haar = haar/norm(haar);
     end
 
-    function U = make_rand_haar_uni(J,ens,com)
+    function U = rand_haar_uni(J,options)
         % This algorithm follows the algorithm outlined in 
         %   Diaconis P., Shahshahani M. "The Subgroup Algorithm for Generating Uniform Random Variables" (2009)
         %
         % Draw random Unitary from circular orthogonal, unitary, or symplectic ensembles
         %
+        arguments
+            J (1,1) double {mustBeHalfInteger};
+            options.ensemble (1,1) string = "Unitary";
+            options.domain (1,1) string = "Complex"; 
+        end
 
         dim = 2*J+1;
-        spin_utils.error_check_spin(J);
-
-        if nargin == 1
-            ens = 'uni';
-            com = 'complex';
-        end
-        if nargin == 2
-            com = 'complex';
-        end
 
         U = eye(dim);
 
         for ii = 2:dim
 
             v = randn(ii,1);
-            if strcmp(com,'complex')
+            if strcmp(options.domain,'Complex')
                 v = v + 1i*randn(ii,1);
             end
+            % this is a Householder transform
             v = v/norm(v);
             phi = v(end)/abs(v(end));
             v = v*phi';
@@ -101,11 +133,11 @@ methods (Static)
 
         end
 
-        if strcmp(ens,'uni')
-            return;
-        elseif strcmp(ens,'ortho')
+        if strcmp(options.ensemble,'Unitary')
+            return
+        elseif strcmp(options.ensemble,'Orthogonal')
             U = U.'*U;
-        elseif strcmp(ens,'symp')
+        elseif strcmp(options.ensemble,'Symplectic')
             if mod(dim,2) == 1
                 error('Symplectic matrix must have even dimension')
             end
@@ -121,10 +153,12 @@ methods (Static)
 
     end
 
-    function H = make_rand_GUE(J)
+    function H = rand_GUE(J)
+        arguments
+            J (1,1) double {mustBeHalfInteger};
+        end
 
         dim = 2*J+1;
-        spin_utils.error_check_spin(J);
 
         H = randn(dim);
         V = diag(diag(H));
@@ -134,168 +168,47 @@ methods (Static)
 
     end
 
-    function [jx,jy,jz] = make_ang_mom(J,con)
-        % norm of spin matrix is J*(J+1)*(2*J+1)/3
-
-        spin_utils.error_check_spin(J);
-        if nargin==1
-            con = spin_utils.get_default_convention();
+    function [jx,jy,jz] = ang_mom(J,options)
+        arguments
+            J (1,1) double {mustBeHalfInteger};
+            options.convention (1,1) string = "Standard";
         end
+        % norm of spin matrix is J*(J+1)*(2*J+1)/3
+        m = J-1:-1:-J;
+        v = sqrt(J*(J+1)-m.*(m+1));
+        jx = (diag(v,1)+diag(v,-1))/2;
+
         
-        if strcmp(con,'standard')
+        jp = diag(sqrt(J*(J+1)-m.*(m+1)),-1);
+        jx = (jp + jp')/2;
+        
+        if strcmp(options.convention,"Standard")
+            jy = (diag(v,1) + diag(-v,-1))/(2i);
             jz = diag(J:-1:-J);
-        elseif strcmp(con,'bgrape')
+        elseif strcmp(options.convention,"Reversed")
+            jy = (diag(-v,1) + diag(v,-1))/(2i); % TODO check if this is correct
             jz = diag(-J:1:J);
         else
             error('Spin convention not recognized')
         end
-        m = J-1:-1:-J;
-        jp = diag(sqrt(J*(J+1)-m.*(m+1)),-1);
 
-        jx = (jp + jp')/2;
-        jy = (jp - jp')/(2i);
     end
-
-    function [D,Ux,Uy] = make_ang_mom_diag(J,con)
-        spin_utils.error_check_spin(J);
-        if nargin==1
-            con = spin_utils.get_default_convention();
-        end
-        
-        dim = 2*J+1;
-        
-        m = J-1:-1:-J;
-        o = sqrt(J*(J+1)-m.*(m+1))/2;
-        if strcmp(con,'standard')
-            lstart = J;
-            inc = -1;
-        elseif strcmp(con,'bgrape')
-            lstart = -J;
-            inc = 1;
-        else
-            error('Spin convention not recognized')
-        end
-        d = lstart:inc:-lstart;
-        
-        % for diag in x
-        D = diag(d);
-        Ux = zeros(dim);
-        Uy = zeros(dim);
-        l = lstart;
-        for jj = 1:dim
-            vec = zeros(dim,1);
-            vec(1) = 1;
-            vec(2) = l/o(1);
-            for ii = 3:dim
-                vec(ii) = (l*vec(ii-1)-o(ii-2)*vec(ii-2))/o(ii-1);
-            end
-            Ux(:,jj) = vec/norm(vec);
-            l = l+inc;
-        end
-        l = lstart;
-        for jj = 1:dim
-            vec = zeros(dim,1);
-            vec(1) = 1;
-            vec(2) = -1j*l/o(1);
-            for ii = 3:dim
-                vec(ii) = -1j*(l*vec(ii-1)+1j*o(ii-2)*vec(ii-2))/o(ii-1);
-            end
-            Uy(:,jj) = vec/norm(vec);
-            l = l+inc;
-        end
-    end
-
-
-    function U = make_uni_qkt(s,t,J,con)
-        if nargin==3
-            con = spin_utils.get_default_convention();
-        end
-        spin_utils.error_check_spin(J);
-        % following Kevin's conventions
-        [jx,~,jz] = spin_utils.make_ang_mom(J,con);
-        U = expm( 1i*(1-s)*jz*t )*expm( 1i*s*jx*jx*t/(2*J) );
-    end
-
-    function set_default_convention(val)
-        spin_utils.get_default_convention(val);
-    end
-
-end
-methods (Access=private,Static)
-    function error_check_spin(J)
-        dim = 2*J+1;
-        if floor(dim)~=dim
-            error('Spin must be half integer')
-        end
-    end
-
-    function con = get_default_convention(nval)
-        persistent val
-        if isempty(val)
-            val = 'standard';
-        end
-        if nargin==1
-            if (~strcmp(nval,'standard'))&&(~strcmp(nval,'bgrape'))
-                error('Spin convention not recognized')
-            end
-            val = nval;
-        end
-        con = val;
-    end
-
-    function scs = gen_scs_standard(n,J)
-        % GEN_SCS  Generates Spin Coherent State Vector.
-        %   scs = GEN_SCS(n,J) spin coherent state with total spin number J pointed in 
-        %                      direction specified by unit vector n 
-        %   standard basis state ordering
-        spin_utils.error_check_spin(J);
-        nn = 2*J; % dimension - 1 (not to be confused with n)
-
-        phi = -atan2(n(2),n(1)); % azimuthal angle
-        p = (-n(3)+1)/2; % stands in for altitude angle
-
-        scs = zeros(nn+1,1);
-        if n(3) == 1
-            scs(1,1) = 1;
-            return
-        else
-            scs(nn+1,1) = (p^(nn/2))*exp(1j*phi*J);  % the phase here is not necessary
-            f = sqrt((1-p)/p)*exp(-1j*phi);
-        end
-        % scs(ii) = sqrt(binom(nn,ii-1,p))*exp(-1j*phi*(J-ii)) from ii = [1,nn+1]
-        % efficiently calculate square root of binomial coefficients
-        % with added azimuthal phase component
-        for ii = 0:(nn-1)
-            scs(nn-ii) = scs(nn+1-ii)*f*sqrt((nn-ii)/(ii+1.));
-        end
-    end
-    function scs = gen_scs_bgrape(n,J)
-        % GEN_SCS  Generates Spin Coherent State Vector.
-        %   scs = GEN_SCS(n,J) spin coherent state with total spin number J pointed in 
-        %                      direction specified by unit vector n 
-        %   standard basis state ordering
-        spin_utils.error_check_spin(J);
-        nn = 2*J; % dimension - 1 (not to be confused with n)
-
-        phi = atan2(n(2),n(1)); % azimuthal angle
-        p = (-n(3)+1)/2; % stands in for altitude angle
-
-        scs = zeros(nn+1,1);
-        if n(3) == 1
-            scs(end,1) = 1;
-            return
-        else
-            scs(1,1) = (p^(nn/2))*exp(1j*phi*J);  % the phase here is not necessary
-            f = sqrt((1-p)/p)*exp(-1j*phi);
-        end
-        % scs(ii) = sqrt(binom(nn,ii-1,p))*exp(-1j*phi*(J-ii)) from ii = [1,nn+1]
-        % efficiently calculate square root of binomial coefficients
-        % with added azimuthal phase component
-        for ii = 0:(nn-1)
-            scs(ii+2) = scs(ii+1)*f*sqrt((nn-ii)/(ii+1.));
-        end
-    end
-
-end
 end
 
+end
+
+function mustBeHalfInteger(J)
+    if ~(floor(2*J)==2*J)
+        eidType = 'mustBeHalfInteger:notHalfInteger';
+        msgType = 'Input must be integer or half integer.';
+        throwAsCaller(MException(eidType,msgType))
+    end
+end
+
+function mustBeUnitVector(n)
+    if ~(norm(n)==1)
+        eidType = 'mustBeUnitVector:notUnitVector';
+        msgType = 'Input must be unit vector.';
+        throwAsCaller(MException(eidType,msgType))
+    end
+end
