@@ -7,6 +7,14 @@ classdef quic_fit
 %   fits all files contained within root directory and within subdirectories recursively
 
 methods (Static)
+
+    function folder = get_data_root()
+        folder = getenv("QuICDATA");
+    end
+
+    % function aggregate_data()
+    % come up with grammar to parse template and return populations
+    % end
     
     function solution = fit_SG(SG_signal,background)
 
@@ -27,7 +35,7 @@ methods (Static)
         areas.three = solution_3.areas;
 
         areas_corr.four = areas.four .* template_data.area_correction_factors_4;
-        areas_corr.three = areas.three .* template_data.area_correction_factors_3(2:8);
+        areas_corr.three = areas.three .* template_data.area_correction_factors_3;
 
         areas_total = sum( [areas_corr.four areas_corr.three]);
         areas_corr_norm = [areas_corr.four areas_corr.three]/areas_total;
@@ -50,7 +58,7 @@ methods (Static)
         solution.single_fits_3(:,:) = solution_3.single_fit(:,:);
 
         solution.area_correction_factors_4 = template_data.area_correction_factors_4;
-        solution.area_correction_factors_3 = template_data.area_correction_factors_3(2:8); % change area correction factors in template_data file
+        solution.area_correction_factors_3 = template_data.area_correction_factors_3; % change area correction factors in template_data file
 
     end
 
@@ -106,27 +114,26 @@ methods (Static)
             options.iso_index (1,1) int32 = 10;
         end
         N_steps = numel(options.format_args{2});
+        N_avg = numel(options.format_args{1});
         fidelities = zeros(1,N_steps);
         for ii = options.format_args{1}
             for jj  = options.format_args{2}
                 fname = fullfile(root,sprintf(options.format,ii,jj));
                 solution = load(fname);
-                if ~isfield(solution,"solution")
-                    fidelities(jj) = fidelities(jj) + solution.populations(options.iso_index);
-                else
-                    fidelities(jj) = fidelities(jj) + solution.solution.populations(options.iso_index);
-                end
+                fidelities(jj) = fidelities(jj) + solution.populations(options.iso_index);
             end
         end
-        fidelities = fidelities/N_steps;
+        fidelities = fidelities/N_avg;
 
         % fit function from Brian Anderson's thesis
         fit_fn = @(x,xdata) 1/16 + (15/16) * (1-16*x(1)/15) * (1 - 16*x(2)/15).^xdata;
         lb = [0,0];
         ub = [1,1];
         x = lsqcurvefit(fit_fn,[0,0],0:(N_steps-1),fidelities,lb,ub);
-        res.fit_errors = x;
-        res.fidelities = fidelities;
+        res.prep_error = x(1);
+        res.step_error = x(2);
+        res.avg_fidelities = fidelities;
+        save(fullfile(root,"benchmark_fit.mat"),"-struct","res")
 
     end
 
@@ -135,7 +142,7 @@ methods (Static)
     % end
 
 end
-methods (Access=private,Static)
+methods (Access=public,Static)
 
     function signal_ds = desample_fn(signal,factor)
         % reduce number of points in vector for faster fitting
@@ -144,28 +151,17 @@ methods (Access=private,Static)
 
     end
 
-    function reshaped_template = reshape_template(amp_factor, width_factor, center, template_signal, template_center )
+    function reshaped_template = reshape_template(amp_factor, width_factor, center, signal_length, template_signal, template_center )
         % squish template and center is about new location
     
-        x = ((1:numel(template_signal))  - template_center) * width_factor + center;
+        % TODO fix signal length bit
+        N = numel(template_signal);
 
-        reshaped_template = amp_factor*interp1(x,template_signal,1:numel(template_signal),'spline',0);
+        xq = (((1:signal_length) - center)*N/signal_length +2 )  / width_factor + template_center;
 
+        % x = ((1:numel(template_signal))  - template_center) * width_factor + center;
 
-        % templateLength = length(template_signal);
-        % xVector = 1-center:1:-center+templateLength;
-
-        % %pad the template signal with zeros and scale amplitude
-        % paddedLength = templateLength + 2*templateLength;
-        % paddedTemplateSignal = ...
-        %     [zeros(templateLength,1);amp_factor*template_signal;zeros(templateLength,1)];
-
-        % xMin = 1 - template_center - templateLength;
-        % xMax = xMin + templateLength + 2*templateLength - 1;
-
-        % %reshaped x vector centered at template center
-        % xVectorReshaped = linspace(xMin*width_factor,xMax*width_factor,paddedLength); 
-        % reshaped_template = interp1(xVectorReshaped,paddedTemplateSignal,xVector,'spline');
+        reshaped_template = amp_factor*interp1(1:N,template_signal,xq,'spline',0);
 
     end
 
@@ -175,11 +171,11 @@ methods (Access=private,Static)
         % widths = params(19:27);
         params = reshape(params,3,[]);
 
-        len = numel(signal);
+        signal_length = numel(signal);
         
-        fit = zeros(1,len);
+        fit = zeros(1,signal_length);
         for ii = 1:dim
-            fit = fit + quic_fit.reshape_template(params(1,ii),params(2,ii),params(3,ii),template_signal,template_center);
+            fit = fit + quic_fit.reshape_template(params(1,ii),params(2,ii),params(3,ii),signal_length,template_signal,template_center);
         end
 
         chi2 = sum((fit - signal).^2);
@@ -209,28 +205,35 @@ methods (Access=private,Static)
 
     function solution = fit_single_manifold( signal, template_data, manifold)
 
+            % TODO add signal length change remove template desampling
+
             %fprintf('start fit_single_template')
             signal = reshape(signal,1,[]);
             
             if manifold == 4
-                dim = 9;
                 centers_guess = template_data.centers_guess_4;
-                widths_guess = template_data.widths_guess;
+                widths_guess = template_data.widths_guess_4;
             elseif manifold == 3
-                dim = 7;
                 % TODO reshape centers_guess
-                centers_guess = template_data.centers_guess_3(2:8); % TODO fix the length issue
-                widths_guess = template_data.widths_guess(2:8);
+                centers_guess = template_data.centers_guess_3; % TODO fix the length issue
+                widths_guess = template_data.widths_guess_3;
             else
                 error("Manifold not recognized")
             end
             
-            amps_guess = signal(centers_guess);
+            % getting initial guess using psuedoinverse
+            dim = numel(centers_guess);
+            signal_length = numel(signal);
+            M = zeros(signal_length,dim);
+            for ii = 1:dim
+                M(:,ii) = quic_fit.reshape_template(1.0, widths_guess(ii), centers_guess(ii), signal_length, template_data.template_signal, template_data.template_center );
+            end
+            amps_guess = pinv(M)*signal';
+            amps_guess(amps_guess<=0) = .001;
+            % use psuedoinverse here
+            % amps_guess = signal(centers_guess);
 
-            % amps_guess = [signal(centers_guess(1)),signal(centers_guess(2)),signal(centers_guess(3)),...
-            %     signal(centers_guess(4)),signal(centers_guess(5)),signal(centers_guess(6)),...
-            %     signal(centers_guess(7)),signal(centers_guess(8)),signal(centers_guess(9))];
-            
+
             template_signal = template_data.template_signal;
             template_center = template_data.template_center;
 
@@ -272,7 +275,8 @@ methods (Access=private,Static)
             params_guess = reshape(params_guess,1,[]);
             lb = reshape(lb,1,[]);
             ub = reshape(ub,1,[]);
-            options = optimset('TolFun',1e-4,'TolX',1e-4,'MaxIter',150,'MaxFunEvals',1500,'Display','iter');
+            % options = optimset('TolFun',1e-5,'TolX',1e-5,'MaxIter',150,'MaxFunEvals',1500,'Display','iter');
+            options = optimset('TolFun',1e-6,'TolX',1e-6,'MaxFunEvals',1000000,'Display','iter');
             [best_params, ~, ~, ~] = ...
                 fmincon(fit_error,params_guess,[],[],[],[],lb,ub,[],options);
             best_params = reshape(best_params,3,[]);
@@ -284,7 +288,7 @@ methods (Access=private,Static)
             len = numel(signal);
             fit = zeros(1,len);
             for ii = 1:dim
-                fit = fit + quic_fit.reshape_template(best_params(1,ii),best_params(2,ii),best_params(3,ii),template_signal,template_center);
+                fit = fit + quic_fit.reshape_template(best_params(1,ii),best_params(2,ii),best_params(3,ii),signal_length,template_signal,template_center);
             end
             solution.best_fit = fit;            
             
@@ -298,7 +302,7 @@ methods (Access=private,Static)
             
             %extract populations from the gaussian areas
             for k = 1:dim
-                single_peak = quic_fit.reshape_template(best_params(1,k),best_params(2,k),best_params(3,k),template_signal,template_center);
+                single_peak = quic_fit.reshape_template(best_params(1,k),best_params(2,k),best_params(3,k),signal_length,template_signal,template_center);
                 solution.single_fit(k,:) = single_peak(1,:);
                 solution.areas(k) = sum(single_peak);
             end
