@@ -108,7 +108,7 @@ methods (Static)
         arguments
             J (1,1) double {mustBeHalfInteger};
             options.ensemble (1,1) string = "Unitary";
-            options.domain (1,1) string = "Complex"; 
+            options.domain (1,1) string {mustBeValidDomain} = "Complex"; 
         end
 
         dim = 2*J+1;
@@ -209,6 +209,14 @@ function mustBeUnitVector(n)
     if ~(norm(n)==1)
         eidType = 'mustBeUnitVector:notUnitVector';
         msgType = 'Input must be unit vector.';
+        throwAsCaller(MException(eidType,msgType))
+    end
+end
+
+function mustBeValidDomain(domain)
+    if ~(strcmp(domain,"Complex")||strcmp(domain,"Real"))
+        eidType = 'mustBeValidDomain:notValidDomain';
+        msgType = 'Domain must be Complex or Real.';
         throwAsCaller(MException(eidType,msgType))
     end
 end
