@@ -35,7 +35,7 @@ function scs = scs_from_unit_vector(n,options)
     % base + step*r
     % each step multiply by sqrt((1-p)/p)  % multiply by phase later
     scs = zeros(dim,1);
-    if n(3)==1
+    if n(3)==-1
         scs(ind) = 1;
         return
     end
