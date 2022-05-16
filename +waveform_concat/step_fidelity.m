@@ -20,21 +20,24 @@ function [optp_list,read_iso_list,prep_iso] = step_fidelity(init_state,map_data,
     end
     % % should this be grape.calc_uni_final(map_params) instead
 
-    psi_init = map_data.exact_map*init_state;
-
+    if isfield(map_data,'exact_map')
+        psi_init = map_data.exact_map*init_state;
+    else
+        psi_init = init_state;
+    end
     N = numel(steps);
 
     steps = cast(steps,'double');
     fin_states = zeros(quic_const.DIM,N);
     for ii = 1:N
-        fin_states(:,ii) = uni_map^(steps(ii)-1)*psi_init;
+        fin_states(:,ii) = uni_map^(steps(ii))*psi_init;
     end
 
     % prep_iso
     if ~isstruct(options.sm_iso)
         prep_iso = grape.bgrape_RUN_iso_sm_prep_fn(psi_init);
     else
-        prep_iso = options.sm_iso;
+        prep_iso = options.sm_iso.opt_params;
     end
 
     for ii = N:-1:1 % reverse to preallocate on first iteration
