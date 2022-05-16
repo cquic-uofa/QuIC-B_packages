@@ -15,8 +15,7 @@ function U = kicked_pSpin_U(alpha,Lambda,p,options)
 
     lin_op = angs{strcmp(options.lin,types)};
     nonlin_op = angs{strcmp(options.lin,types)};
-    
 
-    exp(1j*alpha*lin_op)*exp(1j*Lambda*(nonlin_op^p)/(p*(options.J^(p-1))))
+    U = expm(1j*alpha*lin_op)*expm(1j*Lambda*(nonlin_op^p)/(p*(options.J^(p-1))));
 
 end
