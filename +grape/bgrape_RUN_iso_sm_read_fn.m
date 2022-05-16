@@ -9,7 +9,7 @@ load('+grape/bgrape_units.mat'); %note that frequencies have a factor of 2pi in 
 
 % load(infile);
 
-fprintf('starting bgrape_RUN_iso_sm_prep ... \n')
+fprintf('starting bgrape_RUN_iso_sm_read ... \n')
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 samp_time = [4]*us; %control phases are piecewise constant over this time
@@ -71,6 +71,6 @@ opt_params.rf_amp = opt_params.rf_amp_x;
 % save(outfile,'opt_params');
 
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-fprintf('done with bgrape_RUN_iso_sm_prep \n')
+fprintf('done with bgrape_RUN_iso_sm_read \n')
 
 end
