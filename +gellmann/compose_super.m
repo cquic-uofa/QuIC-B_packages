@@ -1,4 +1,15 @@
 function A = compose_super(r,basis)
+    %
+    % gellmann.compose_super(r,basis)
+    % Converts vector in gellmann basis to operator
+    %    
+    % Arguments:
+    %     r     : vector (real for Hermitian matrix)
+    %     basis : matrix of basis elements of shape (dim^2,dim^2)
+    %                    (output from gellmann.gen_basis_super(dim))
+    % Output:
+    %     A     : operator (Hermitian for real vector)
+    % 
     [d,~] = size(r);
     d = sqrt(d);
     assert(floor(d)==d,'Vector must be of perfect square dimension')

@@ -1,4 +1,24 @@
 function solution = fit_SG(SG_signal,background)
+    %
+    % quic_fits.fit_SG(SG_signal,background)
+    % Fits standard stern gerlach signal as output from AutoDAQ
+    % routine in master front panel
+    %    
+    % Arguments:
+    %     SG_signal  : struct with fields SG_tof_4 and SG_tof_3
+    %                        stores time of flight signals for SG measurement 
+    %     background : struct with fields SG_tof_4 and SG_tof_3
+    %                        stores background SG signal 
+    % Output:
+    %     solution.populations : final estimates for populations in proper order
+    %     solution.area_max    : maximum population area
+    %     solution.signal_4    : raw ToF signal in 4 manifold
+    %     solution.signal_3    : raw ToF signal in 3 manifold
+    %     solution.best_fit_4  : fitted template in 4 manifold
+    %     solution.best_fit_3  : fitted template in 3 manifold
+    %     solution.solution_4  : individual solution in 4 manifold
+    %     solution.solution_3  : individual solution in 3 manifold
+    % 
 
     template_data = load("+quic_fits/template_data.mat");
 
@@ -29,7 +49,6 @@ function solution = fit_SG(SG_signal,background)
     solution.area_max = popmax;
     solution.signal_4 = signal_4;
     solution.signal_3 = signal_3;
-    solution.signal_4 = signal_4;
     solution.best_fit_4 = solution_4.best_fit;
     solution.best_fit_3 = solution_3.best_fit;
 

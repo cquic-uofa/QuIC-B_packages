@@ -1,7 +1,7 @@
 function [D,Ux,Uy] = ang_mom_diag(options)
     arguments
         options.J (1,1) double {mustBeHalfInteger,mustBeNonnegative};
-        options.convention (1,1) string {mustBeValidConvention} = "Standard";
+        options.convention (1,1) string {mustBeMember(options.convention,["Standard","Reversed"])} = "Standard";
     end
     J = options.J;
     dim = 2*J+1;

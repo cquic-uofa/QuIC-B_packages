@@ -3,7 +3,7 @@ function scs = scs_from_polar_angles(theta,phi,options)
         theta (1,1) double;
         phi (1,1) double;
         options.J (1,1) double {mustBeHalfInteger,mustBeNonnegative} = 7.5;
-        options.convention (1,1) string {mustBeValidConvention} = "Standard";
+        options.convention (1,1) string {mustBeMember(options.convention,["Standard","Reversed"])} = "Standard";
     end
     
     n = [sin(theta)*cos(phi),sin(theta)*sin(phi),cos(theta)];

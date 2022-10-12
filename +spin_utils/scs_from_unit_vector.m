@@ -2,7 +2,7 @@ function scs = scs_from_unit_vector(n,options)
     arguments
         n (3,1) double {mustBeUnitVector};
         options.J (1,1) double {mustBeHalfInteger,mustBeNonnegative} = 7.5;
-        options.convention (1,1) string {mustBeValidConvention} = "Standard";
+        options.convention (1,1) string {mustBeMember(options.convention,["Standard","Reversed"])} = "Standard";
     end
 
     % generates spin coherent state from unit vector n in subspace with angular momentum J

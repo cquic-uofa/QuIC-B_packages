@@ -4,7 +4,7 @@ function process = step_process(optp,n,options)
         n (:,1) double {mustBeInteger}
         options.exact_map (16,16) double {mustBeUnitary} = eye(16);
         options.runs (1,1) double {mustBeInteger} = 60;
-        options.process_type (1,1) string {mustBeValidProcessType} = "Exper";
+        options.process_type (1,1) string {mustBeMember(options.process_type,["Exper","Exact"])} = "Exper";
     end
     % gets the process matrix for given unitary after the given number of steps
     % Op2Vec(rho_fin) = process * Op2Vec(rho)

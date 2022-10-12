@@ -1,4 +1,4 @@
-function [rho,status] = solve_ls(A,M,options)
+function [rho,status,EP] = solve_ls(A,M,options)
     arguments
         A (:,:) double % operators
         M (:,1) double % measurements
@@ -23,6 +23,8 @@ function [rho,status] = solve_ls(A,M,options)
     cvx_end
 
     rho = full(rho); 
-    status = cvx_status;
+    EP = norm(A*rho(:)-M,2);
 
+    status = cvx_status;
+    cvx_clear
 end

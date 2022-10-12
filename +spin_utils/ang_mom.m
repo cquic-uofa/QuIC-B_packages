@@ -1,7 +1,7 @@
 function [jx,jy,jz] = ang_mom(options)
     arguments
         options.J (1,1) double {mustBeHalfInteger};
-        options.convention (1,1) string {mustBeValidConvention} = "Standard";
+        options.convention (1,1) string {mustBeMember(options.convention,["Standard","Reversed"])} = "Standard";
     end
     % norm of spin matrix is J*(J+1)*(2*J+1)/3
     J = options.J;
@@ -15,8 +15,6 @@ function [jx,jy,jz] = ang_mom(options)
     elseif strcmp(options.convention,"Reversed")
         jy = (diag(-v,1) + diag(v,-1))/(2i); % TODO check if this is correct
         jz = diag(-J:1:J);
-    else
-        error('Spin convention not recognized')
     end
 
 end

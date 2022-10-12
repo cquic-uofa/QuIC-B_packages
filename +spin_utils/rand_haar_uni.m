@@ -4,10 +4,19 @@ function U = rand_haar_uni(options)
     %
     % Draw random Unitary from circular orthogonal, unitary, or symplectic ensembles
     %
+    % U = rand_haar_uni(options)
+    %
+    % arguments
+    %     options.J (1,1) double {mustBeHalfInteger};
+    %     options.ensemble (1,1) string {mustBeMember(options.ensemble,["Unitary","Orthogonal","Symplectic"])} = "Unitary";
+    %     options.domain (1,1) string {mustBeMember(options.domain,["Complex","Real"])} = "Complex"; 
+    % end
+
     arguments
         options.J (1,1) double {mustBeHalfInteger};
-        options.ensemble (1,1) string = "Unitary";
-        options.domain (1,1) string {mustBeValidDomain} = "Complex"; 
+        options.ensemble (1,1) string {mustBeMember(options.ensemble,["Unitary","Orthogonal",...
+                                                                      "Symplectic"])} = "Unitary";
+        options.domain (1,1) string {mustBeMember(options.domain,["Complex","Real"])} = "Complex"; 
     end
     
     J = options.J;
@@ -47,8 +56,6 @@ function U = rand_haar_uni(options)
             rot(2*jj-1,2*jj) = -1;
         end
         U = rot*U.'*rot.'*U;
-    else
-        error('Ensemble not recognized')
     end
 
 end

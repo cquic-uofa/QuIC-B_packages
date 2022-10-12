@@ -1,4 +1,21 @@
-function recursive_fit(root)
+function recursive_fit(filepath)
+    %
+    % quic_fits.recursive_fit()
+    % Recursively fits all data in root directory
+    % 
+    % Arguments:
+    %     root (1,1) string  : root directory within which any ToF signal will be fit
+    %     options.data_dir (1,1) string = ""; if empty data_dir = getenv("QuICDATA")
+    %                        : path to root directory
+    %
+    arguments (Repeating)
+        filepath
+    end
+    if isempty(filepath{1})
+        filepath{1} = getenv("QuICDATA");
+    end
+
+    root = fullfile(filepath{:});
 
     dir_struct = dir(root);
     

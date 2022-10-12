@@ -71,7 +71,8 @@ function solution = fit_single_manifold( signal, template_data, manifold)
     lb = reshape(lb,1,[]);
     ub = reshape(ub,1,[]);
     % options = optimset('TolFun',1e-5,'TolX',1e-5,'MaxIter',150,'MaxFunEvals',1500,'Display','iter');
-    options = optimset('TolFun',1e-6,'TolX',1e-6,'MaxFunEvals',1000000,'Display','iter');
+    options = optimset('TolFun',1e-4,'TolX',1e-4,'MaxIter',150,'MaxFunEvals',1500,'Display','iter');
+    % options = optimset('TolFun',1e-6,'TolX',1e-6,'MaxFunEvals',1000000,'Display','iter');
     [best_params, ~, ~, ~] = ...
         fmincon(fit_error,params_guess,[],[],[],[],lb,ub,[],options);
     best_params = reshape(best_params,3,[]);
